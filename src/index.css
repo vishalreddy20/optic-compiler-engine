@@ -1,0 +1,64 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --bg-dark: #0a0e1a;
+    --bg-panel: #111827;
+    --text-primary: #e2e8f0;
+    --text-secondary: #94a3b8;
+    --accent-cyan: #00d4ff;
+    --accent-blue: #3b82f6;
+    --error-red: #f87171;
+    --success-green: #4ade80;
+    --border-dim: rgba(255, 255, 255, 0.1);
+  }
+
+  body {
+    background-color: var(--bg-dark);
+    color: var(--text-primary);
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+}
+
+@layer components {
+  .panel-glass {
+    @apply bg-gray-900/80 backdrop-blur-md border border-white/10 rounded-xl overflow-hidden shadow-2xl;
+  }
+  
+  .btn-cyan {
+    @apply bg-transparent border border-[#00d4ff] text-[#00d4ff] hover:bg-[#00d4ff]/10 transition-colors duration-200;
+  }
+
+  .btn-cyan-solid {
+    @apply bg-[#00d4ff] text-black font-semibold hover:bg-[#00d4ff]/90 transition-colors duration-200 shadow-[0_0_15px_rgba(0,212,255,0.4)];
+  }
+  
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
+
+/* Custom scrollbar for panels */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 212, 255, 0.5);
+}
