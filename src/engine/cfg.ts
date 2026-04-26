@@ -52,8 +52,20 @@ export function buildCFG(ast: ASTNode | null): CFGNode[] {
         currentBlock.statements.push(node.test);
         const ifNode = currentBlock;
 
+        let isAlwaysTrue = false;
+        let isAlwaysFalse = false;
+        if (node.test && node.test.type === 'Literal') {
+          if (node.test.value === 0 || node.test.value === '0' || node.test.value === false) {
+            isAlwaysFalse = true;
+          } else {
+            isAlwaysTrue = true;
+          }
+        }
+
         const thenBlock = createNode(nodes);
-        link(ifNode, thenBlock);
+        if (!isAlwaysFalse) {
+          link(ifNode, thenBlock);
+        }
         currentBlock = thenBlock;
         traverse(node.consequent);
         const thenEnd = currentBlock;
@@ -61,18 +73,28 @@ export function buildCFG(ast: ASTNode | null): CFGNode[] {
         let elseEnd: CFGNode | null = null;
         if (node.alternate) {
           const elseBlock = createNode(nodes);
-          link(ifNode, elseBlock);
+          if (!isAlwaysTrue) {
+            link(ifNode, elseBlock);
+          }
           currentBlock = elseBlock;
           traverse(node.alternate);
           elseEnd = currentBlock;
         }
 
         const mergeBlock = createNode(nodes);
-        link(thenEnd, mergeBlock);
+        if (!isAlwaysFalse) {
+          link(thenEnd, mergeBlock);
+        }
         if (elseEnd) {
-          link(elseEnd, mergeBlock);
+          if (!isAlwaysTrue) {
+            link(elseEnd, mergeBlock);
+          }
         } else {
-          link(ifNode, mergeBlock);
+          if (!isAlwaysTrue && !isAlwaysFalse) {
+            link(ifNode, mergeBlock);
+          } else if (isAlwaysFalse) {
+            link(ifNode, mergeBlock);
+          }
         }
         currentBlock = mergeBlock;
       } else if (node.type === 'WhileStatement') {

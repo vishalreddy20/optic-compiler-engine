@@ -27,7 +27,9 @@ export function analyzeConstantFolding(ast: ASTNode | null): OptimizationSuggest
             line: node.line,
             severity: 'medium',
             beforeCode: `${node.left.raw} ${node.operator} ${node.right.raw}`,
-            afterCode: `${result}`
+            afterCode: `${result}`,
+            node,
+            originalText: `${node.left.raw} ${node.operator} ${node.right.raw}`
           });
         }
       }

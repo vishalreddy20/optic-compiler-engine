@@ -56,7 +56,9 @@ export function analyzeCommonSubexpressions(ast: ASTNode | null): OptimizationSu
         line: line2, // Flag the second occurrence
         severity: 'medium',
         beforeCode: `// Repeated: ${hash}\n// ...\n// Repeated: ${hash}`,
-        afterCode: `auto temp = ${hash};\n// Use temp\n// ...\n// Use temp`
+        afterCode: `auto temp = ${hash};\n// Use temp\n// ...\n// Use temp`,
+        hash: hash,
+        nodes: nodes
       });
     }
   }

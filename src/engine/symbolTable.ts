@@ -19,6 +19,7 @@ export interface SymbolInfo {
 
 export class SymbolTable {
   private symbols: Map<string, SymbolInfo[]> = new Map();
+  private allDeclaredSymbols: SymbolInfo[] = [];
   private currentScope = 0;
 
   enterScope() {
@@ -39,7 +40,9 @@ export class SymbolTable {
 
   declare(name: string, type: string, line: number, isFunction = false, isParam = false) {
     const infos = this.symbols.get(name) || [];
-    infos.push({ name, type, line, isUsed: false, scopeLevel: this.currentScope, isFunction, isParam });
+    const info = { name, type, line, isUsed: false, scopeLevel: this.currentScope, isFunction, isParam };
+    infos.push(info);
+    this.allDeclaredSymbols.push(info);
     this.symbols.set(name, infos);
   }
 
@@ -52,16 +55,14 @@ export class SymbolTable {
 
   getAllUnused(): SymbolInfo[] {
     const unused: SymbolInfo[] = [];
-    for (const infos of this.symbols.values()) {
-      for (const info of infos) {
-        // Filter out: used symbols, functions, params, stdlib names, underscore-prefixed
-        if (info.isUsed) continue;
-        if (info.isFunction) continue;
-        if (info.isParam) continue;
-        if (STDLIB_NAMES.has(info.name)) continue;
-        if (info.name.startsWith('_')) continue;
-        unused.push(info);
-      }
+    for (const info of this.allDeclaredSymbols) {
+      // Filter out: used symbols, functions, params, stdlib names, underscore-prefixed
+      if (info.isUsed) continue;
+      if (info.isFunction) continue;
+      if (info.isParam) continue;
+      if (STDLIB_NAMES.has(info.name)) continue;
+      if (info.name.startsWith('_')) continue;
+      unused.push(info);
     }
     return unused;
   }

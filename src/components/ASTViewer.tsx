@@ -5,7 +5,7 @@ interface ASTViewerProps {
   ast: ASTNode | null;
 }
 
-interface LayoutNode {
+export interface LayoutNode {
   id: number;
   x: number;
   y: number;
@@ -15,9 +15,10 @@ interface LayoutNode {
   depth: number;
   childCount: number;
   collapsed: boolean;
+  astNode: ASTNode; // added to trace back for diffing
 }
 
-interface LayoutEdge {
+export interface LayoutEdge {
   id: string;
   x1: number;
   y1: number;
@@ -25,15 +26,15 @@ interface LayoutEdge {
   y2: number;
 }
 
-const NODE_W = 100;
-const NODE_H = 36;
-const GAP_X = 30;
-const GAP_Y = 80;
-const MAX_VISIBLE = 500;
-const DEFAULT_COLLAPSE_DEPTH = 4;
+export const NODE_W = 100;
+export const NODE_H = 36;
+export const GAP_X = 30;
+export const GAP_Y = 80;
+export const MAX_VISIBLE = 500;
+export const DEFAULT_COLLAPSE_DEPTH = 4;
 
 // Color mapping by node type
-function getNodeColors(nodeType: string): { fill: string; stroke: string } {
+export function getNodeColors(nodeType: string): { fill: string; stroke: string } {
   switch (nodeType) {
     case 'FunctionDeclaration': return { fill: '#1a4a7a', stroke: '#00d4ff' };
     case 'IfStatement': case 'ForStatement': case 'WhileStatement':
@@ -53,11 +54,9 @@ function getNodeColors(nodeType: string): { fill: string; stroke: string } {
   }
 }
 
-function getChildren(n: ASTNode): ASTNode[] {
+export function getChildren(n: ASTNode): ASTNode[] {
   const c: ASTNode[] = [];
-  if ('params' in n && Array.isArray(n.params)) {
-    // Don't render params as child nodes (they are metadata)
-  }
+  if ('params' in n && Array.isArray(n.params)) {}
   if ('body' in n) {
     if (Array.isArray(n.body)) c.push(...n.body);
     else if (n.body && typeof n.body === 'object' && 'type' in n.body) c.push(n.body as ASTNode);
@@ -77,7 +76,7 @@ function getChildren(n: ASTNode): ASTNode[] {
   return c;
 }
 
-function getLabel(node: ASTNode): { label: string; subLabel: string } {
+export function getLabel(node: ASTNode): { label: string; subLabel: string } {
   let label = node.type;
   let subLabel = '';
   if (label.length > 14) label = label.slice(0, 13) + '…';
@@ -88,12 +87,84 @@ function getLabel(node: ASTNode): { label: string; subLabel: string } {
   return { label, subLabel };
 }
 
-function countChildren(n: ASTNode): number {
+export function countChildren(n: ASTNode): number {
   let count = 0;
   const ch = getChildren(n);
   count += ch.length;
   for (const child of ch) count += countChildren(child);
   return count;
+}
+
+export function buildTreeLayout(ast: ASTNode | null, collapsedNodes: Set<number>) {
+  if (!ast) return { layoutNodes: [], layoutEdges: [], totalWidth: 0, totalHeight: 0, totalNodeCount: 0 };
+
+  const nodes: LayoutNode[] = [];
+  const edges: LayoutEdge[] = [];
+  let nodeId = 0;
+  let totalCount = 0;
+
+  function computeLayout(astNode: ASTNode, depth: number, xOffset: number, collapsed: Set<number>): { id: number; width: number; x: number } {
+    const id = nodeId++;
+    totalCount++;
+    const children = getChildren(astNode);
+    const { label, subLabel } = getLabel(astNode);
+    const cc = countChildren(astNode);
+    const isCollapsed = collapsed.has(id) || (depth >= DEFAULT_COLLAPSE_DEPTH && !collapsed.has(-id));
+
+    let myX = xOffset;
+    const myY = depth * GAP_Y + 40;
+    let childrenWidth = 0;
+    const childPositions: { id: number; x: number }[] = [];
+
+    if (children.length > 0 && !isCollapsed && totalCount < MAX_VISIBLE) {
+      let currentX = xOffset;
+      for (const child of children) {
+        const result = computeLayout(child, depth + 1, currentX, collapsed);
+        childPositions.push({ id: result.id, x: result.x });
+        currentX += result.width + GAP_X;
+        childrenWidth += result.width + GAP_X;
+      }
+      childrenWidth -= GAP_X;
+      myX = xOffset + childrenWidth / 2 - NODE_W / 2;
+
+      for (const cp of childPositions) {
+        edges.push({
+          id: `e-${id}-${cp.id}`,
+          x1: myX + NODE_W / 2,
+          y1: myY + NODE_H,
+          x2: cp.x + NODE_W / 2,
+          y2: myY + GAP_Y,
+        });
+      }
+    } else {
+      childrenWidth = NODE_W;
+    }
+
+    nodes.push({
+      id,
+      x: myX,
+      y: myY,
+      label,
+      subLabel,
+      nodeType: astNode.type,
+      depth,
+      childCount: cc,
+      collapsed: isCollapsed && children.length > 0,
+      astNode // attach astNode
+    });
+
+    return { id, width: Math.max(NODE_W, childrenWidth), x: myX };
+  }
+
+  const { width: totalW } = computeLayout(ast, 0, 40, collapsedNodes);
+
+  return {
+    layoutNodes: nodes,
+    layoutEdges: edges,
+    totalWidth: Math.max(totalW + 120, 800),
+    totalHeight: nodes.length > 0 ? Math.max(...nodes.map(n => n.y)) + 120 : 400,
+    totalNodeCount: totalCount,
+  };
 }
 
 export function ASTViewer({ ast }: ASTViewerProps) {
@@ -110,80 +181,7 @@ export function ASTViewer({ ast }: ASTViewerProps) {
 
   // Build tree layout
   const { layoutNodes, layoutEdges, totalWidth, totalHeight, totalNodeCount } = useMemo(() => {
-    if (!ast) return { layoutNodes: [], layoutEdges: [], totalWidth: 0, totalHeight: 0, totalNodeCount: 0 };
-
-    const nodes: LayoutNode[] = [];
-    const edges: LayoutEdge[] = [];
-    let nodeId = 0;
-    let totalCount = 0;
-
-    // Iterative Reingold-Tilford inspired layout
-    function computeLayout(
-      astNode: ASTNode,
-      depth: number,
-      xOffset: number,
-      collapsed: Set<number>
-    ): { id: number; width: number; x: number } {
-      const id = nodeId++;
-      totalCount++;
-      const children = getChildren(astNode);
-      const { label, subLabel } = getLabel(astNode);
-      const cc = countChildren(astNode);
-      const isCollapsed = collapsed.has(id) || (depth >= DEFAULT_COLLAPSE_DEPTH && !collapsed.has(-id));
-
-      let myX = xOffset;
-      const myY = depth * GAP_Y + 40;
-      let childrenWidth = 0;
-      const childPositions: { id: number; x: number }[] = [];
-
-      if (children.length > 0 && !isCollapsed && totalCount < MAX_VISIBLE) {
-        let currentX = xOffset;
-        for (const child of children) {
-          const result = computeLayout(child, depth + 1, currentX, collapsed);
-          childPositions.push({ id: result.id, x: result.x });
-          currentX += result.width + GAP_X;
-          childrenWidth += result.width + GAP_X;
-        }
-        childrenWidth -= GAP_X;
-        myX = xOffset + childrenWidth / 2 - NODE_W / 2;
-
-        for (const cp of childPositions) {
-          edges.push({
-            id: `e-${id}-${cp.id}`,
-            x1: myX + NODE_W / 2,
-            y1: myY + NODE_H,
-            x2: cp.x + NODE_W / 2,
-            y2: myY + GAP_Y,
-          });
-        }
-      } else {
-        childrenWidth = NODE_W;
-      }
-
-      nodes.push({
-        id,
-        x: myX,
-        y: myY,
-        label,
-        subLabel,
-        nodeType: astNode.type,
-        depth,
-        childCount: cc,
-        collapsed: isCollapsed && children.length > 0,
-      });
-
-      return { id, width: Math.max(NODE_W, childrenWidth), x: myX };
-    }
-
-    const { width: totalW } = computeLayout(ast, 0, 40, collapsedNodes);
-
-    return {
-      layoutNodes: nodes,
-      layoutEdges: edges,
-      totalWidth: Math.max(totalW + 120, 800),
-      totalHeight: nodes.length > 0 ? Math.max(...nodes.map(n => n.y)) + 120 : 400,
-      totalNodeCount: totalCount,
-    };
+    return buildTreeLayout(ast, collapsedNodes);
   }, [ast, collapsedNodes]);
 
   // Apply transform to g element directly

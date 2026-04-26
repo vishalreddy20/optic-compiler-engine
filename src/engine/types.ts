@@ -69,6 +69,13 @@ export interface OptimizationSuggestion {
   afterCode: string;
   compilerTheory?: string;
   estimatedSpeedup?: string;
+  node?: ASTNode;
+  nodes?: ASTNode[];
+  startLine?: number;
+  endLine?: number;
+  targetLine?: number;
+  hash?: string;
+  originalText?: string;
 }
 
 export interface AnalysisReport {
@@ -87,4 +94,7 @@ export interface AnalysisReport {
     reachableBlocks: number;
     deadBlocks: number;
   };
+  optimizedCode?: string;
+  optimizationsApplied?: number;
+  afterAST?: ASTNode | null;
 }

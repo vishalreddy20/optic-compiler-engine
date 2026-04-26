@@ -14,7 +14,8 @@ export function analyzeUnusedVariables(symbolTable: SymbolTable): OptimizationSu
       line: sym.line,
       severity: 'low',
       beforeCode: `${sym.type} ${sym.name};`,
-      afterCode: '// Remove declaration'
+      afterCode: '// Remove declaration',
+      hash: sym.name
     });
   }
 

@@ -7,7 +7,8 @@ import { analyzeConstantFolding } from './passes/constant-folding';
 import { analyzeUnusedVariables } from './passes/unused-variables';
 import { analyzeCommonSubexpressions } from './passes/cse';
 import { analyzeLoopInvariant } from './passes/licm';
-import { AnalysisReport, CompilerError, OptimizationSuggestion } from './types';
+import { AnalysisReport, CompilerError, OptimizationSuggestion, ASTNode } from './types';
+import { applyOptimizations } from './codeRewriter';
 
 export function analyzeCode(code: string): AnalysisReport {
   const startTime = performance.now();
@@ -43,7 +44,29 @@ export function analyzeCode(code: string): AnalysisReport {
     console.error("Error during optimization passes", e);
   }
 
-  // 6. Metrics Calculation
+  // 6. Apply Optimizations & Re-parse
+  let optimizedCode = code;
+  let afterAST: ASTNode | null = null;
+  let optimizationsApplied = 0;
+  
+  if (suggestions.length > 0) {
+    optimizedCode = applyOptimizations(code, suggestions, ast);
+    optimizationsApplied = suggestions.length;
+    
+    // Attempt to re-parse
+    try {
+      const optErrors: CompilerError[] = [];
+      const optTokens = tokenize(optimizedCode, optErrors);
+      if (optErrors.length === 0) {
+        afterAST = parse(optTokens, optErrors);
+        if (optErrors.length > 0) afterAST = null;
+      }
+    } catch (e) {
+      console.warn("Failed to re-parse optimized code", e);
+    }
+  }
+
+  // 7. Metrics Calculation
   const astNodesCount = countASTNodes(ast);
   const reachableBlocks = cfg.filter(n => n.isReachable).length;
   const deadBlocks = cfg.length - reachableBlocks;
@@ -70,7 +93,10 @@ export function analyzeCode(code: string): AnalysisReport {
       linesOfCode: code.split('\n').length,
       reachableBlocks,
       deadBlocks
-    }
+    },
+    optimizedCode,
+    optimizationsApplied,
+    afterAST
   };
 }
 

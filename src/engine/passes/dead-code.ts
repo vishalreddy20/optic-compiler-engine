@@ -9,6 +9,7 @@ export function analyzeDeadCode(cfg: CFGNode[], ast: ASTNode | null): Optimizati
     if (!node.isReachable && !node.isExit && node.statements.length > 0) {
       // Find the first statement in the unreachable block
       const firstStmt = node.statements[0];
+      const lastStmt = node.statements[node.statements.length - 1];
       suggestions.push({
         id: `dead-code-${node.id}`,
         type: 'Dead Code Elimination',
@@ -17,7 +18,9 @@ export function analyzeDeadCode(cfg: CFGNode[], ast: ASTNode | null): Optimizati
         line: 'line' in firstStmt && firstStmt.line ? firstStmt.line : 0,
         severity: 'high',
         beforeCode: '// Unreachable statements...',
-        afterCode: '// Removed'
+        afterCode: '// Removed',
+        startLine: 'line' in firstStmt && firstStmt.line ? firstStmt.line : 0,
+        endLine: 'line' in lastStmt && lastStmt.line ? lastStmt.line : 0
       });
     }
   }
