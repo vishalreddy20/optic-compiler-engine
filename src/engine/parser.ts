@@ -41,7 +41,7 @@ export function parse(tokens: Token[], errors: CompilerError[] = []): ASTNode | 
 
   function isTypeSpecifier(): boolean {
     if (peek().type === TokenType.KEYWORD) {
-      return ['int', 'float', 'double', 'char', 'void'].includes(peek().value);
+      return ['int', 'float', 'double', 'char', 'void', 'auto'].includes(peek().value);
     }
     return false;
   }

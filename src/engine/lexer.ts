@@ -1,7 +1,7 @@
 import { Token, TokenType, CompilerError } from './types';
 
 const KEYWORDS = new Set([
-  'if', 'else', 'while', 'for', 'do', 'return', 'int', 'float', 'double', 'char', 'void',
+  'if', 'else', 'while', 'for', 'do', 'return', 'int', 'float', 'double', 'char', 'void', 'auto',
   'struct', 'typedef', 'const', 'static', 'extern', 'break', 'continue',
 ]);
 
