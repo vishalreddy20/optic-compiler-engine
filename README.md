@@ -1,5 +1,7 @@
 # Intelligent Code Optimizer
 
+🚀 **Live Demo:** [https://deluxe-axolotl-340b9b.netlify.app](https://deluxe-axolotl-340b9b.netlify.app)
+
 An advanced, production-grade static code analysis and optimization engine built entirely in TypeScript and React. This project provides a real-time, browser-based "Dark IDE" experience that visualizes compiler-level mechanics—from lexical analysis to control flow graph generation—and offers actionable optimization suggestions.
 
 ## 🌟 Key Features
@@ -97,8 +99,8 @@ project/
 ### Installation
 1. **Clone the repository:**
    ```bash
-   git clone <repository-url>
-   cd project
+   git clone https://github.com/vishalreddy20/optic-compiler-engine.git
+   cd optic-compiler-engine
    ```
 
 2. **Install dependencies:**
